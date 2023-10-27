@@ -1,0 +1,4 @@
+deb http://sdimg01.qualcomm.com/shire/Ubuntu/media-Ubuntu-12.04-amd64/ precise main universe multiverse restricted
+deb http://sdimg01.qualcomm.com/shire/Ubuntu/media-Ubuntu-12.04-amd64/ precise-updates main universe multiverse restricted
+deb http://sdimg01.qualcomm.com/shire/Ubuntu/media-Ubuntu-12.04-amd64/ precise-security main universe multiverse restricted
+deb http://sdimg01.qualcomm.com/shire/Ubuntu/media-Ubuntu-12.04-amd64/ precise-backports main universe multiverse restricted

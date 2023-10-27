@@ -1,0 +1,171 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: schemaspy-html
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: schemaspy-config
+data:
+  schemaspy.properties: |
+    # type of database. Run with -dbhelp for details
+    schemaspy.t=pgsql11
+    # database properties: host, port number, name user, password
+    schemaspy.host=dbpgomnicastprd
+    schemaspy.port=5438
+    schemaspy.db=omnicastdb
+    schemaspy.u=omnicastprd_ro
+    schemaspy.p=qua1c0mmprd123
+    # output dir to save generated files
+    schemaspy.o=/output
+    # db scheme for which generate diagrams
+    schemaspy.s=perception
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: schemaspy
+spec:
+  concurrencyPolicy: Forbid
+  schedule: "*/15 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          securityContext:
+            fsGroup: 472
+            supplementalGroups:
+              - 0
+          initContainers:
+            - name: fix-vol-perms
+              image: docker-registry.qualcomm.com/library/busybox:latest
+              command: ['sh', '-c', 'rm -rf /output/*; chmod 775 /output']
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 10Mi
+              volumeMounts:
+                - mountPath: /output
+                  name: schemaspy-output
+          containers:
+            - name: schemaspy
+              image: schemaspy/schemaspy:6.1.0
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: TZ
+                  value: America/Los_Angeles
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 750Mi
+              volumeMounts:
+                - mountPath: /output
+                  name: schemaspy-output
+                - mountPath: /schemaspy.properties
+                  name: schemaspy-properties
+                  readOnly: true
+                  subPath: schemaspy.properties
+          restartPolicy: Never
+          volumes:
+            - name: schemaspy-output
+              persistentVolumeClaim:
+                claimName: schemaspy-html
+            - name: schemaspy-properties
+              configMap:
+                name: schemaspy-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      securityContext:
+        fsGroup: 472
+        supplementalGroups:
+          - 0
+      containers:
+        - name: nginx
+          image: docker-registry.qualcomm.com/library/nginx:stable
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http-nginx
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /index.html
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 2
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 80
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 250m
+              memory: 750Mi
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html
+              readOnly: true
+              name: nginx-html
+      volumes:
+        - name: nginx-html
+          persistentVolumeClaim:
+            claimName: schemaspy-html
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+      targetPort: http-nginx
+  selector:
+    app: nginx
+  sessionAffinity: None
+  type: LoadBalancer
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+spec:
+  rules:
+  - host: xrr-schemaspy.lvprd.oks.drekar.qualcomm.com
+    http:
+      paths:
+      - backend:
+          serviceName: nginx
+          servicePort: 80
+  tls:
+  - hosts:
+    - xrr-schemaspy.lvprd.oks.drekar.qualcomm.com

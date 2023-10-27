@@ -1,0 +1,103 @@
+#!/bin/ksh
+
+PATH=/bin:/usr/bin:/pkg/gnu/bin
+export PATH
+
+bin=`basename $0`
+tmp1="/tmp/_$bin.1.$$"
+tmp2="/tmp/_$bin.2.$$"
+
+if [ "$bin" = phfield ]
+then
+	PH=/usr/local/bin/ph
+	default_ret='email'
+	type=person
+elif [ "$bin" = mdbfield ]
+then
+	PH=/usr/local/bin/mdb
+	default_ret='name'
+	type=computer
+else
+	echo "huh? - \$bin: $bin"
+	exit 2
+fi
+
+ph_get=
+ph_ret=
+num_ret=0
+sort_arg=
+delim="	"
+
+while [ $# -gt 0 ]
+do
+	if echo "x$1" | egrep -c '^xreturn$'  > /dev/null
+	then
+		:
+	elif echo "x$1" | grep -c =  > /dev/null
+	then
+		ph_get="$ph_get $1"
+	elif [ "x$1" ==  "x-d" ]
+	then
+		delim="$2"
+		shift
+	elif [ "x$1" ==  "x-u" ]
+	then
+		sort_arg="-u"
+	else
+		ph_ret="$ph_ret $1"
+		num_ret=$(( $num_ret+1 ))
+	fi
+	shift
+done
+
+if [ -z "$ph_get" ]
+then
+	cat<<EOF 1>&2
+USAGE: $bin key=value [key=value ...] return_field
+Returns just the return field in a column.
+Default return field is $default_ret
+
+BUGS: there can be no spaces around the '=' sign in the key/value pairs.
+EOF
+	exit 1
+fi
+
+if [ -z "$ph_ret" ]
+then
+	ph_ret="$default_ret"
+	num_ret=1
+fi
+
+awk_ret=`echo $ph_ret | tr ' ' '|'`
+
+trap "rm -f $tmp1 $tmp2 > /dev/null 2>&1; exit" 0 1 2 15
+
+$PH type=$type $ph_get return $ph_ret 						\
+| sed -e 's/Not present in entry./Not_present_in_entry./g'	\
+      -e 's/^ *//'											\
+| gawk '													\
+	NR==1													\
+	{														\
+		next;												\
+	}														\
+	{														\
+		if (/^:/)											\
+		{													\
+			sub(": ","");									\
+			l = sprintf ("%s%s", l, $0);					\
+		} 													\
+		else												\
+		{													\
+			if (l) {										\
+				print l;									\
+			}												\
+			l=$0;											\
+		} 													\
+	}'														\
+| gawk "/^($awk_ret):/"'{$1="||_kj_||";print}'				\
+| sed 's/^||_kj_|| /||_kj_||/'								\
+| gawk '{l=l"	"$0}NR%'$num_ret'==0{print l;l=""}'			\
+| sed 's/^	//'												\
+| sort $sort_arg											\
+| sed -e 's/^||_kj_||//'									\
+      -e 's,\	*||_kj_||,'\\"$delim"',g'

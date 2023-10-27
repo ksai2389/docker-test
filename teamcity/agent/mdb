@@ -1,0 +1,15 @@
+#!/bin/sh
+
+ph="`dirname $0`/ph"
+if [ ! -x "$ph" ]; then
+	echo "${ph} binary is missing or not executable!"
+	exit 1
+fi
+
+if [ "x$1" = "x" ]
+then
+        exec $ph -s mdb -p 905
+else
+        exec $ph -s mdb -p 905 "$@"
+fi
+

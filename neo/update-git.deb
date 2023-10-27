@@ -1,0 +1,23 @@
+#!/bin/bash
+
+#download
+wget http://crad-cobbler.qualcomm.com/repo/neo-ubuntu/pool/main/g/git/git_1.7.11.4-4_amd64.deb
+
+# raw-extract (with DEBIAN folder)
+dpkg-deb -R git_1.7.11.4-4_amd64.deb ./orig
+
+# make duplicate
+cp -a ./orig ./new
+
+# patch
+patch -p0<git.deb-patch
+
+# build new package
+dpkg-deb -b ./new git_1.7.11.4-4_amd64.new.deb
+
+# install new package
+dpkg -i git_1.7.11.4-4_amd64.new.deb
+
+# cleanup
+rm git_1.7.11.4-4_amd64.new.deb git_1.7.11.4-4_amd64.deb
+rm -r ./orig ./new

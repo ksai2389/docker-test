@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  ci:
+    depends_on:
+      - db
+    image: teamcity:server
+    volumes:
+    - /local/mnt/workspace/teamcity/datadir:/opt/TeamCity/datadir
+    - /local/mnt/workspace/teamcity/logs:/opt/TeamCity/logs
+    environment:
+      TEAMCITY_SERVER_MEM_OPTS: '-Xmx4g -XX:MaxPermSize=270m -XX:ReservedCodeCacheSize=350m'
+    network_mode: "host"
+
+  db:
+    image: mysql:5
+    volumes:
+    - /local/mnt/workspace/teamcity/db:/var/lib/mysql
+    - /local/mnt/workspace/teamcity/dbconf:/etc/mysql/conf.d
+    environment:
+      - MYSQL_ROOT_PASSWORD=omnidb
+      - MYSQL_DATABASE=teamcity
+      - MYSQL_USER=tc
+      - MYSQL_PASSWORD=focus
+    network_mode: "host"

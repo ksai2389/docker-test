@@ -1,0 +1,52 @@
+# from: https://engineerworkshop.com/2020/02/04/how-to-monitor-disk-usage-and-growth-with-diskover/#how-to-install-and-deploy-diskover
+version: '2'
+services:
+  diskover:
+    build: .
+    container_name: diskover
+    environment:
+      - PUID=450826
+      - PGID=200
+      - TZ=America/Los_Angeles
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ES_HOST=elasticsearch
+      - ES_PORT=9200
+      - ES_USER=elastic
+      - ES_PASS=changeme
+      - RUN_ON_START=true
+      - USE_CRON=true
+    volumes:
+      - /local/mnt/workspace/diskover/config:/config
+      - /prj/omnicast:/data/omnicast:ro
+      - /prj/omnicast_XR:/data/omnicast_XR:ro
+      - /prj/omnilin:/data/omnilin:ro
+      - /prj/blurit:/data/blurit:ro
+      - /local/mnt/workspace:/data/workspace:ro
+      - /local/mnt/workspace2:/data/workspace2:ro
+    ports:
+      - 3000:80
+      - 9181:9181
+      - 9999:9999
+    mem_limit: 4096m
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+      - redis
+  elasticsearch:
+    container_name: elasticsearch
+    image: elasticsearch:5.6.9
+    volumes:
+      - /local/mnt/workspace/diskover/elasticsearch/data:/usr/share/elasticsearch/data
+    environment:
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+  redis:
+    container_name: redis
+    image: redis:alpine
+    volumes:
+      - /local/mnt/workspace/diskover/redis:/data

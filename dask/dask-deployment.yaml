@@ -1,0 +1,54 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: dask
+  name: dask
+spec:
+  selector:
+    matchLabels:
+      app: dask
+  template:
+    metadata:
+      labels:
+        app: dask
+    spec:
+      containers:
+        - name: dask
+          image: docker-registry.qualcomm.com/xrresearch/sfreg:py310
+          #image: busybox
+          command: [ "sleep" ]
+          args: [ "infinity" ]
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 4Gi
+          volumeMounts:
+            - mountPath: /prj/omnilin
+              name: prj-omnilin
+            - mountPath: /prj/xrresearch
+              name: prj-xrresearch
+      volumes:
+        - name: prj-omnilin
+          flexVolume:
+            driver: fstab/cifs
+            fsType: cifs
+            secretRef:
+              name: omnici-cifs-secret
+            options:
+              networkPath: //megalon/omnilin
+              mountOptions: dir_mode=0755,file_mode=0644,noperm
+        - name: prj-xrresearch
+          flexVolume:
+            driver: fstab/cifs
+            fsType: cifs
+            secretRef:
+              name: omnici-cifs-secret
+            options:
+              networkPath: //zarkon/xrresearch
+              mountOptions: dir_mode=0755,file_mode=0644,noperm
+      dnsConfig:
+        searches:
+          - qualcomm.com

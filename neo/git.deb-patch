@@ -1,0 +1,16 @@
+diff -ur orig/DEBIAN/control new/DEBIAN/control
+--- orig/DEBIAN/control	2013-12-16 13:01:03.000000000 -0800
++++ new/DEBIAN/control	2015-03-03 23:26:49.874914648 -0800
+@@ -1,10 +1,11 @@
+ Package: git
+-Version: 1.7.11.4-4
++Version: 1:1.7.11.4-4
+ Architecture: amd64
+ Maintainer: Marc Juarez <mjuarez@heisenberg>
+ Installed-Size: 15119
+ Section: alien
+ Priority: extra
++Provides: git-completion, git-core
+ Description: Fast Version Control System
+  Git is a fast, scalable, distributed revision control system with an
+  unusually rich command set that provides both high-level operations

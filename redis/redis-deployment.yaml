@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: redis
+    role: leader
+  name: redis-data-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: sc-low-r2-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-leader
+  labels:
+    app: redis
+    role: leader
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+      role: leader
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: leader
+    spec:
+      schedulerName: stork
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-data-pvc
+      containers:
+      - name: redis-leader
+        image: docker-registry.qualcomm.com/library/redis:6.2.7-alpine
+        ports:
+        - name: redis-server
+          containerPort: 6379
+        volumeMounts:
+        - mountPath: "/data"
+          name: redis-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-leader
+  labels:
+    app: redis
+    role: leader
+spec:
+  ports:
+  - port: 6379
+    targetPort: redis-server
+  selector:
+    app: redis
+    role: leader
+  sessionAffinity: None
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-follower
+  labels:
+    app: redis
+    role: follower
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: redis
+      role: follower
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: follower
+    spec:
+      containers:
+      - name: redis-follower
+        image: docker-registry.qualcomm.com/library/redis:6.2.7-alpine
+        command: ["redis-server", "--replicaof", "redis-leader", "6379"]
+        ports:
+        - name: redis-follower
+          containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-follower
+  labels:
+    app: redis
+    role: follower
+spec:
+  ports:
+  - port: 6379
+    targetPort: redis-follower
+  selector:
+    app: redis
+    role: follower
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: redis-ingress
+spec:
+  rules:
+  - host: xrr-redis.lvprd.oks.drekar.qualcomm.com
+    http:
+      paths:
+      - backend:
+          serviceName: redis-leader
+          servicePort: 6379
+  tls:
+  - hosts:
+    - xrr-redis.lvprd.oks.drekar.qualcomm.com

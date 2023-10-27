@@ -1,0 +1,4 @@
+deb http://ks.qualcomm.com/neo//Ubuntu/media-Ubuntu-12.04-amd64/ precise main universe multiverse restricted
+deb http://ks.qualcomm.com/neo//Ubuntu/media-Ubuntu-12.04-amd64/ precise-updates main universe multiverse restricted
+deb http://ks.qualcomm.com/neo//Ubuntu/media-Ubuntu-12.04-amd64/ precise-security main universe multiverse restricted
+deb http://ks.qualcomm.com/neo//Ubuntu/media-Ubuntu-12.04-amd64/ precise-backports main universe multiverse restricted
